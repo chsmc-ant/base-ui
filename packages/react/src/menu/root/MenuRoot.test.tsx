@@ -1090,6 +1090,59 @@ describe('<Menu.Root />', () => {
         });
       });
 
+      describe.skipIf(isJSDOM)('programmatic open from a custom interaction', () => {
+        function App() {
+          const [open, setOpen] = React.useState(false);
+          return (
+            <div>
+              <button
+                type="button"
+                data-testid="external"
+                onClick={() => setOpen(true)}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowRight') {
+                    setOpen(true);
+                  }
+                }}
+              >
+                external
+              </button>
+              <TestMenu rootProps={{ open, onOpenChange: setOpen }} />
+            </div>
+          );
+        }
+
+        it('focuses the first item when opened via a custom keydown handler', async () => {
+          const { user } = await render(<App />);
+
+          const external = screen.getByTestId('external');
+          await act(async () => {
+            external.focus();
+          });
+
+          await user.keyboard('[ArrowRight]');
+
+          const [firstItem, ...otherItems] = await screen.findAllByRole('menuitem');
+          await waitFor(() => expect(firstItem).toHaveFocus());
+          expect(firstItem.tabIndex).toBe(0);
+          otherItems.forEach((item) => {
+            expect(item.tabIndex).toBe(-1);
+          });
+        });
+
+        it('does not focus an item when opened via a pointer interaction', async () => {
+          const { user } = await render(<App />);
+
+          await user.click(screen.getByTestId('external'));
+
+          const popup = await screen.findByRole('menu');
+          await waitFor(() => expect(popup).toHaveFocus());
+          screen.getAllByRole('menuitem').forEach((item) => {
+            expect(item.tabIndex).toBe(-1);
+          });
+        });
+      });
+
       it('focuses the trigger after the menu is closed', async () => {
         const { user } = await render(
           <div>

@@ -29,6 +29,7 @@ import {
   getFloatingFocusElement,
   getTarget,
   isTypeableCombobox,
+  matchesFocusVisible,
 } from '../utils/element';
 import { enqueueFocus } from '../utils/enqueueFocus';
 import { isVirtualClick, isVirtualPointerEvent, stopEvent } from '../utils/event';
@@ -836,6 +837,24 @@ export function useListNavigation(
 
         commonOnKeyDown(event);
       },
+      onFocus(event) {
+        const target = getTarget(event.nativeEvent) as Element | null;
+
+        // When a programmatic/custom-keyboard open lands focus on the popup
+        // itself with `:focus-visible`, treat it like a keyboard open and
+        // highlight the first item so arrow navigation works immediately.
+        if (
+          focusItemOnOpenRef.current === 'auto' &&
+          latestOpenRef.current &&
+          indexRef.current === -1 &&
+          keyRef.current == null &&
+          target === event.currentTarget &&
+          matchesFocusVisible(target)
+        ) {
+          indexRef.current = getMinEnabledIndex();
+          onNavigate(event);
+        }
+      },
       onPointerMove() {
         isPointerModalityRef.current = true;
       },
@@ -850,6 +869,9 @@ export function useListNavigation(
     open,
     virtual,
     domReferenceElement,
+    latestOpenRef,
+    getMinEnabledIndex,
+    onNavigate,
   ]);
 
   const trigger: ElementProps['trigger'] = React.useMemo(() => {
